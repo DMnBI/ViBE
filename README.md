@@ -66,6 +66,33 @@ If you get an error in the second statement, install tokenizers like this:
 conda intall -c huggingface tokenizers=0.10.1
 ```
 
+### 1.4 Install ViBE
+
+The source files and useful scripts are in this repository. The pre-trained and fine-tuned models have been uploaded on **Google Drive** since the size of each model is larger than 100MB. PLEASE make sure to download models after cloning this repository.
+
+```
+git clone https://github.com/DMnBI/ViBE.git
+cd ViBE
+```
+
+Please download the model you need through the link below and save them in the `models` directory.
+
+**Pre-trained model**
+
+* [pre-trained](https://drive.google.com/file/d/100EITt7ZmyjkBl_X1kJ83nfV5jpK_ED1/view?usp=sharing)
+
+**Domain-level classifier**
+
+* [BPDR.150bp](https://drive.google.com/file/d/1nSTwkvfeJ5VTs2__FOIVW9IO-L8iQZid/view?usp=sharing)
+* [BPDR.250bp](https://drive.google.com/file/d/1WdawuAiz1E4CYwrtjvd24dNFHUjns9ZZ/view?usp=sharing)
+
+**Order-level classifiers**
+
+* [DNA.150bp](https://drive.google.com/file/d/1HrFwr-VQrUHA9vdUowQtOgTCxb6IBA9u/view?usp=sharing)
+* [DNA.250bp](https://drive.google.com/file/d/1C-MMl-tMuTJnEkzTrt7EEIRJKB5OqZha/view?usp=sharing)
+* [RNA.150bp](https://drive.google.com/file/d/1JHD146DDftVLmM8yecNxjxR28v8SUtGt/view?usp=sharing)
+* [RNA.250bp](https://drive.google.com/file/d/1c_jKpqDE8L7hZOKkiTPai53FNzYVGscp/view?usp=sharing)
+
 ## 2. How to use ViBE
 
 Vibe consists of **THREE** main functions: **pre-train**, **fine-tune**, **predict**  
@@ -87,10 +114,10 @@ Although a pre-trained model is given in the `models/pre-trained` directory by d
 
 ```
 export WORK_DIR={your working directory}
-export DATA_DIR=$WORK_DIR/data/pre-train
+export DATA_DIR=$WORK_DIR/examples/pre-train
 export CACHE_DIR=$DATA_DIR/cached
-export TRAIN_FILE=$DATA_DIR/train.paired.csv
-export DEV_FILE=$DATA_DIR/dev.paired.csv
+export TRAIN_FILE=$DATA_DIR/train.csv
+export DEV_FILE=$DATA_DIR/dev.csv
 export OUTPUT_DIR=$WORK_DIR/models/my_pre-trained
 export CONFIG_FILE=$WORK_DIR/src/configs/ViBE-config-4
 
@@ -124,10 +151,10 @@ You can fine-tune the pre-trained model using your data for any specific task.
 ```
 export WORK_DIR={your working directory}
 export PRETRAINED_MODEL=$WORK_DIR/models/pre-trained
-export DATA_DIR=$WORK_DIR/data/fine-tune
+export DATA_DIR=$WORK_DIR/examples/fine-tune
 export CACHE_DIR=$DATA_DIR/cached
-export TRAIN_FILE=$DATA_DIR/250bp/BPDR.train.paired.csv
-export DEV_FILE=$DATA_DIR/250bp/BPDR.dev.paired.csv
+export TRAIN_FILE=$DATA_DIR/BPDR.250bp.train.paired.csv
+export DEV_FILE=$DATA_DIR/BPDR.250bp.dev.paired.csv
 export OUTPUT_DIR=$WORK_DIR/models/my_BPDR.250bp
 
 vibe fine-tune \
@@ -141,7 +168,7 @@ vibe fine-tune \
     --max_seq_length 504 \
     --num_workers 20 \
     --num_train_epochs 4 \
-    --eval_steps 1000 \
+    --eval_steps 80 \
     --per_device_batch_size 32 \
     --warmup_ratio 0.25 \
     --learning_rate 3e-5
@@ -153,11 +180,11 @@ You can simply make classification using the fine-tuned model. ViBE makes two ou
 ```
 export WORK_DIR={your working directory}
 export FINETUNED_MODEL=$WORK_DIR/models/BPDR.250bp
-export DATA_DIR=$WORK_DIR/data/sample
+export DATA_DIR=$WORK_DIR/examples/sample
 export CACHE_DIR=$DATA_DIR/cached
-export SAMPLE_FILE=$DATA_DIR/sample.paired.csv
+export SAMPLE_FILE=$DATA_DIR/SRR14403295.paired.csv
 export OUTPUT_DIR=$WORK_DIR/preds
-export OUTPUT_PREFIX=sample
+export OUTPUT_PREFIX=SRR14403295
 
 vibe predict \
     --gpus 0
@@ -171,6 +198,15 @@ vibe predict \
     --num_workers 20 \
     --remove_label // when you have 'label' column in your data
 ```
+
+Example of `.txt` file:
+
+|seqid |prediction |score |
+|:-----|:----------|-----:|
+|query0 |Bacteria |0.99 |
+|query1 |RNA_viruses |0.72 |
+|query2 |Phage |0.92 |
+|query3 |DNA_viruses |0.88 |
 
 ## 3. Data processing
 
@@ -193,7 +229,8 @@ Single-end reads:
 |TCCA CCAC CACG ACGA ...| query0|
 
 **NOTE1.** Any additional column does not affect performance of ViBE.  
-**NOTE2.** `label` column is additionally required for fine-tuning. You have to add `label` column based on your knowledge for generating fine-tuning dataset.  
+**NOTE2.** `seqid` column is not required for pre-training.  
+**NOTE3.** `label` column is additionally required for fine-tuning. You have to add `label` column based on your knowledge for generating fine-tuning dataset.  
 
 **USAGE**
 
@@ -234,3 +271,89 @@ split_data.py \
 ```
 
 ## 4. Run example data
+
+This is an example of ViBE workflow to classify the SARS-CoV-2 dataset. Example sequenced reads are given in the `examples/SARS-CoV-2` directory. 10 000 reads were sub-sampled from the SARS-CoV-2 sample that is reported on the SRA database with accession number SRR14403295.
+
+### 4.1 Data processing
+
+Convert sequenced reads into *k*-mer documents.
+
+```
+python scripts/seq2kmer_doc.py \
+    -i examples/SARS-CoV-2/SRR14403295_1.10K.fastq \
+    -p examples/SARS-CoV-2/SRR14403295_2.10K.fastq \
+    -o examples/SARS-CoV-2/SRR14403295.10K.paired.csv \
+    -k 4 \
+    -f fastq \
+    --min-length 150 \
+    --max-length 251
+```
+
+Among 10 000 reads, 9 968 reads are converted into *k*-mer documents. The rest 32 reads are ignored since their length is shorter than 150bp.
+
+Before run ViBE, make `preds` directory for saving prediction outputs.
+
+```
+mkdir examples/SARS-CoV-2/preds
+```
+
+### 4.2 Domain-level classification
+
+```
+export FINETUNED_MODEL=models/BPDR.250bp
+export DATA_DIR=examples/SARS-CoV-2
+export CACHE_DIR=$DATA_DIR/cached
+export SAMPLE_FILE=$DATA_DIR/SRR14403295.10K.paired.csv
+export OUTPUT_DIR=$DATA_DIR/preds
+export OUTPUT_PREFIX=SRR14403295.domain
+
+src/vibe predict \
+    --gpus 0 \
+    --model $FINETUNED_MODEL \
+    --sample_file $SAMPLE_FILE \
+    --output_dir $OUTPUT_DIR \
+    --output_prefix $OUTPUT_PREFIX \
+    --cache_dir $CACHE_DIR \
+    --per_device_batch_size 500 \
+    --max_seq_length 504 \
+    --num_workers 20
+```
+
+The result files `SRR14403295.domain.txt` and `SRR14403295.domain.npy` will be generated in the `preds` directory. Among 9 968 samples, 9 153 samples are classified as `RNA_viruses` and 8 257 samples exceed confidence score cutoff 0.9.
+
+### 4.3 Order-level classification
+
+Get records classified as `RNA_viruses` with high confidence score over 0.9.
+
+```
+python scripts/split_data.py \
+    -i examples/SARS-CoV-2/SRR14403295.10K.paired.csv \
+    -p examples/SARS-CoV-2/preds/SRR14403295.domain.txt \
+    -o examples/SARS-CoV-2/ \
+    -c 0.9 \
+    -t RNA_viruses
+```
+
+The above command generates `RNA_viruses.csv` file in the `examples/SARS-CoV-2` directory.
+
+```
+export FINETUNED_MODEL=models/RNA.250bp
+export DATA_DIR=examples/SARS-CoV-2
+export CACHE_DIR=$DATA_DIR/cached
+export SAMPLE_FILE=$DATA_DIR/RNA_viruses.csv
+export OUTPUT_DIR=$DATA_DIR/preds
+export OUTPUT_PREFIX=SRR14403295.RNA
+
+src/vibe predict \
+    --gpus 0 \
+    --model $FINETUNED_MODEL \
+    --sample_file $SAMPLE_FILE \
+    --output_dir $OUTPUT_DIR \
+    --output_prefix $OUTPUT_PREFIX \
+    --cache_dir $CACHE_DIR \
+    --per_device_batch_size 500 \
+    --max_seq_length 504 \
+    --num_workers 20
+```
+
+The result files `SRR14403295.RNA.txt` and `SRR14403295.RNA.npy` will be generated in the `preds` directory. Among 8 257 samples, 7 873 samples are classified as `Nidovirales` and 7 303 samples exceed confidence score cutoff 0.9.
