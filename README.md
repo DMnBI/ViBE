@@ -187,12 +187,12 @@ export OUTPUT_DIR=$WORK_DIR/preds
 export OUTPUT_PREFIX=SRR14403295
 
 vibe predict \
-    --gpus 0
+    --gpus 0 \
     --model $FINETUNED_MODEL \
     --sample_file $SAMPLE_FILE \
     --output_dir $OUTPUT_DIR \
     --output_prefix $OUTPUT_PREFIX \
-    --cache_dir $CACHE_DIR
+    --cache_dir $CACHE_DIR \
     --per_device_batch_size 500 \
     --max_seq_length 504 \
     --num_workers 20 \
