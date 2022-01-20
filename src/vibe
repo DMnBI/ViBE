@@ -1,0 +1,358 @@
+#!/usr/bin/env python
+
+__version__ = "0.0.1"
+
+import sys
+import argparse
+import os
+
+from vibe_pretrain import run_pretrain
+from vibe_finetune import run_finetune
+from vibe_predict import run_predict
+
+import warnings
+warnings.filterwarnings('ignore')
+
+def parse_args(argv = sys.argv[1:]):
+	def data_args(data_group, predict = False):
+		if not predict:
+			data_group.add_argument("--validation_file",
+				dest="eval_file",
+				metavar="CSV",
+				help="k-mer document for validation; if you do not give a validation file, evaluations will not ber performed")
+			data_group.add_argument("--save_total_limit",
+				dest="save_total_limit",
+				metavar="INT",
+				type=int,
+				help="the maximum number of checkpoints to be saved; if not set, save all checkpoints")
+			data_group.add_argument("--overwrite_output_dir",
+				dest="overwrite_output_dir",
+				action="store_true",
+				help="Overwrite the contents of the output directory; if not set, resume from the last checkpoint")
+		data_group.add_argument("--cache_dir",
+			dest="cache_dir",
+			metavar="PATH",
+			help="a location to save the cached input file")
+		data_group.add_argument("--max_seq_length",
+			dest="max_seq_len",
+			metavar="INT",
+			type=int,
+			default=512,
+			help='the maximum length of input sequence; default 512')
+		data_group.add_argument("--num_workers",
+			dest="num_workers",
+			metavar="INT",
+			type=int,
+			default=1,
+			help="the number of CPUs for processing data; default 1")
+
+
+	def training_args(training_group):
+		training_group.add_argument("--gradient_accumulation_steps",
+			dest="acc_steps",
+			metavar="INT",
+			type=int,
+			default=1,
+			help="the number of steps to accumulate gradient; default 1")
+		training_group.add_argument("--num_train_epochs",
+			dest="num_train_epochs",
+			metavar="INT",
+			type=int,
+			default=1,
+			help="total number of training epochs; default 1")
+		training_group.add_argument("--max_steps",
+			dest="max_steps",
+			metavar="INT",
+			type=int,
+			help="total number of training steps; if set > 0, override num_train_epochs")
+		training_group.add_argument("--eval_steps",
+			dest="eval_steps",
+			metavar="INT",
+			type=int,
+			default=500,
+			help="the number of steps to perfrom evaluation; default 500")
+		training_group.add_argument("--per_device_batch_size",
+			dest="batch_size",
+			metavar="INT",
+			type=int,
+			default=1,
+			help="batch size for each device; default 1")
+		training_group.add_argument("--warmup_ratio",
+			dest="warmup_ratio",
+			metavar="FLOAT",
+			type=float,
+			default=0.1,
+			help="a ratio for warmup learning rate; default 0.1")
+		training_group.add_argument("--learning_rate",
+			dest="learning_rate",
+			metavar="FLOAT",
+			type=float,
+			default=4e-4,
+			help="learning rate for training; default 4e-4")
+		training_group.add_argument("--weight_decay",
+			dest="weight_decay",
+			metavar="FLOAT",
+			type=float,
+			default=0.01,
+			help="weight decay for AdamW optimizer; default 0.01")
+		training_group.add_argument("--adam_beta1",
+			dest="adam_beta1",
+			metavar="FLOAT",
+			type=float,
+			default=0.9,
+			help="beta1 for AdamW optimizer; default 0.9")
+		training_group.add_argument("--adam_beta2",
+			dest="adam_beta2",
+			metavar="FLOAT",
+			type=float,
+			default=0.999,
+			help="beta2 for AdamW optimizer; default 0.999")
+		training_group.add_argument("--adam_epsilon",
+			dest="adam_epsilon",
+			metavar="FLOAT",
+			type=float,
+			default=1e-8,
+			help="epsilon for AdamW optimizer; default 1e-8")
+		
+
+	def pretrain_args(subparsers):
+		pretrain = subparsers.add_parser('pre-train', 
+			help = 'pre-train vibe using massive unlabeled data')
+		pretrain.add_argument("--quiet",
+			dest="quiet",
+			action="store_true",
+			help="DO NOT print any log messages")
+		pretrain.add_argument("--gpus",
+			dest='gpus',
+			metavar="GPUs",
+			help="a list of gpu bus id to be used; if not set, use all GPUs")
+
+		data_group = pretrain.add_argument_group("data processing arguments")
+		data_args(data_group)
+
+		training_group = pretrain.add_argument_group("training arguments")
+		training_group.add_argument('--mlm_probability',
+			dest="mlm_prob",
+			metavar="FLOAT",
+			type=float,
+			default=0.15,
+			help="masking probability for MLM; default 0.15")
+		training_args(training_group)
+
+		req_group = pretrain.add_argument_group('required arguments')
+		req_group.add_argument('--train_file',
+			dest='train_file',
+			metavar='CSV',
+			required=True,
+			help='k-mer document for pre-training')
+		req_group.add_argument("--output_dir",
+			dest="output_dir",
+			metavar="PATH",
+			required=True,
+			help="output directory to save the pre-trained model")
+		req_group.add_argument("--config",
+			dest="config",
+			metavar="PATH",
+			required=True,
+			help="a directory including configuration files for vibe model")
+
+
+	def finetune_args(subparsers):
+		finetune = subparsers.add_parser('fine-tune',
+			help = 'fine-tune the pre-trained vibe using labeled data')
+		finetune.add_argument("--quiet",
+			dest="quiet",
+			action="store_true",
+			help="DO NOT print any log messages")
+		finetune.add_argument("--gpus",
+			dest='gpus',
+			metavar="GPUs",
+			help="a list of gpu bus id to be used; if not set, use all GPUs")
+
+		data_group = finetune.add_argument_group("data processing arguments")
+		data_args(data_group)
+
+		training_group = finetune.add_argument_group("training arguments")
+		training_args(training_group)
+
+		req_group = finetune.add_argument_group('required arguments')
+		req_group.add_argument('--pre-trained_model',
+			dest="pretrained",
+			metavar="MODEL",
+			required=True,
+			help="a pre-trained model for fine-tuning")
+		req_group.add_argument('--train_file',
+			dest='train_file',
+			metavar='CSV',
+			required=True,
+			help='k-mer document for fine-tuning')
+		req_group.add_argument("--output_dir",
+			dest="output_dir",
+			metavar="PATH",
+			required=True,
+			help="output directory to save the fine-tuned model")
+
+
+	def predict_args(subparsers):
+		predict = subparsers.add_parser('predict',
+			help = 'make prediction using fine-tuned vibe')
+		predict.add_argument("--quiet",
+			dest="quiet",
+			action="store_true",
+			help="DO NOT print any log messages")
+		predict.add_argument("--gpus",
+			dest='gpus',
+			metavar="GPUs",
+			help="a list of gpu bus id to be used; if not set, use all GPUs")
+		predict.add_argument("--output_dir",
+			dest="output_dir",
+			metavar="PATH",
+			default="./",
+			help="output directory to save the prediction results; default current working directory")
+		predict.add_argument("--output_prefix",
+			dest="output_prefix",
+			metavar="STR",
+			default="predictions",
+			help="a prefix of prediction results file; default predictions")
+		predict.add_argument("--per_device_batch_size",
+			dest="batch_size",
+			metavar="INT",
+			type=int,
+			default=1,
+			help="batch size for each device; default 1")
+		
+		data_group = predict.add_argument_group("data processing arguments")
+		data_args(data_group, predict = True)
+		data_group.add_argument("--remove_label",
+			dest='remove_label',
+			action="store_true",
+			help="remove column named 'label' from dataset")
+
+		req_group = predict.add_argument_group('required arguments')
+		req_group.add_argument('--model',
+			dest="model",
+			metavar="MODEL",
+			required=True,
+			help="fine-tuned model")
+		req_group.add_argument('--sample_file',
+			dest='sample_file',
+			metavar="CSV",
+			required=True,
+			help='k-mer document for making predictions')
+
+
+	argparser = argparse.ArgumentParser('vibe')
+	argparser.add_argument('-v', '--version',
+		action="version",
+		version='%(prog)s {version}'.format(version = __version__))
+	subparsers = argparser.add_subparsers(dest = 'prog')
+
+	pretrain_args(subparsers)
+	finetune_args(subparsers)
+	predict_args(subparsers)
+
+	return argparser.parse_args(argv)
+
+def base_args(args, prog):
+	predict = (prog == 'predict')
+
+	base = [
+		'--output_dir', args.output_dir,
+		'--max_seq_length', str(args.max_seq_len),
+		'--num_workers', str(args.num_workers),
+		'--dataloader_num_workers', str(args.num_workers),
+		'--pad_to_max_length',
+		]
+
+	if args.quiet:
+		base += [
+		'--log_level', 'critical',
+		'--quiet_datasets', 'True',
+		]
+
+	if not predict:
+		base += [
+		'--do_train', '--train_file', args.train_file,
+		'--per_device_train_batch_size', str(args.batch_size),
+		'--gradient_accumulation_steps', str(args.acc_steps),
+		'--learning_rate', str(args.learning_rate),
+		'--weight_decay', str(args.weight_decay),
+		'--adam_beta1', str(args.adam_beta1),
+		'--adam_beta2', str(args.adam_beta2),
+		'--adam_epsilon', str(args.adam_epsilon),
+		'--lr_scheduler_type', 'linear',
+		'--warmup_ratio', str(args.warmup_ratio),
+		'--remove_unused_columns', 'True',
+		]
+
+		if args.max_steps:
+			base += ['--max_steps', str(args.max_steps)]
+		else:
+			base += ['--num_train_epochs', str(args.num_train_epochs)]
+
+	if not predict and args.eval_file:
+		base += [
+		'--do_eval', '--validation_file', args.eval_file,
+		'--per_device_eval_batch_size', str(args.batch_size),
+		'--save_strategy', 'steps',
+		'--logging_strategy', 'steps',
+		'--evaluation_strategy', 'steps',
+		'--save_steps', str(args.eval_steps),
+		'--logging_steps', str(args.eval_steps),
+		'--eval_steps', str(args.eval_steps),
+		]
+
+	if not predict and args.save_total_limit:
+		base += ['--save_total_limit', str(args.save_total_limit)]
+
+	if not predict and args.overwrite_output_dir:
+		base += ['--overwrite_output_dir']
+
+	if args.cache_dir:
+		base += ['--cache_dir', args.cache_dir]
+
+	return base
+
+
+def run_vibe(args, prog):
+	cmd = base_args(args, prog)
+	if prog == 'pre-train':
+		cmd += [
+		'--config_name', args.config,
+		'--tokenizer_name', args.config,
+		'--mlm_probability', str(args.mlm_prob),
+		'--line_by_line', 
+		]
+
+		run_pretrain(args = cmd)
+	elif prog == 'fine-tune':
+		cmd += [
+		'--model_name_or_path', args.pretrained,
+		]
+
+		run_finetune(args = cmd)
+	elif prog == 'predict':
+		cmd += [
+		'--model_name_or_path', args.model,
+		'--do_predict', '--test_file', args.sample_file,
+		'--per_device_eval_batch_size', str(args.batch_size),
+		'--output_prefix', args.output_prefix,
+		'--remove_label', str(args.remove_label),
+		]
+
+		run_predict(args = cmd)
+
+
+def main(argv = sys.argv[1:]):
+	args = parse_args(argv)
+	if args.gpus:
+		os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+		os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
+
+	run_vibe(args, args.prog)
+
+	return 0
+
+# main
+if __name__ == "__main__":
+	exit(main())
