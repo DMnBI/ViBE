@@ -66,7 +66,7 @@ If you get an error in the second statement, install tokenizers like this:
 conda intall -c huggingface tokenizers=0.10.1
 ```
 
-### 1.4 Install ViBE
+### 1.4 Install ViBE and download models
 
 The source files and useful scripts are in this repository. The pre-trained and fine-tuned models have been uploaded on **Google Drive** since the size of each model is larger than 100MB. PLEASE make sure to download models after cloning this repository.
 
