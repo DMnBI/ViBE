@@ -62,8 +62,7 @@ from transformers.models.bert.tokenization_bert import BertTokenizer
 If you get an error in the first statement, check the transformers version.  
 If you get an error in the second statement, 
 
-| ImportError: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found|
-|---|
+> ImportError: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found
 
 reinstall tokenizers like this:
 
