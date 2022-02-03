@@ -60,10 +60,15 @@ from transformers.models.bert.tokenization_bert import BertTokenizer
 ```
 
 If you get an error in the first statement, check the transformers version.  
-If you get an error in the second statement, install tokenizers like this:
+If you get an error in the second statement, 
+
+| ImportError: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found|
+|---|
+
+reinstall tokenizers like this:
 
 ```
-conda intall -c huggingface tokenizers=0.10.1
+conda install -c huggingface tokenizers=0.10.1
 ```
 
 ### 1.4 Install ViBE and download models
