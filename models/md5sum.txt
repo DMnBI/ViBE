@@ -1,0 +1,7 @@
+13e46abc7cd1d6987fc0279e3f39c034  BPDR.150bp.tar.gz
+bf28f06eb69bbd0aa2ebc2c582169d4f  BPDR.250bp.tar.gz
+2f45b2c446012d7d2d2eeb412e3b565d  DNA.150bp.tar.gz
+c6830e7d612fe8c373add16371a6e752  DNA.250bp.tar.gz
+10f2fb1a433f87f7508834e4e8a32733  pre-trained.tar.gz
+14b8f93e7e62b70b8229341acea6d2d9  RNA.150bp.tar.gz
+4680ba8c35a354f35c02b5e7b04255ea  RNA.250bp.tar.gz

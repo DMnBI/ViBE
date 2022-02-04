@@ -1,6 +1,6 @@
 ## Models directory
 
-This is a directory to save models.  
+This is a directory to save models. You can check that models have been downloaded properly using the give MD5 checksum list.  
 The pre-trained models could be downloaded through the links as follow:  
 
 **Pre-trained model**
@@ -18,3 +18,10 @@ The pre-trained models could be downloaded through the links as follow:
 * [DNA.250bp](https://drive.google.com/file/d/1C-MMl-tMuTJnEkzTrt7EEIRJKB5OqZha/view?usp=sharing)
 * [RNA.150bp](https://drive.google.com/file/d/1JHD146DDftVLmM8yecNxjxR28v8SUtGt/view?usp=sharing)
 * [RNA.250bp](https://drive.google.com/file/d/1c_jKpqDE8L7hZOKkiTPai53FNzYVGscp/view?usp=sharing)
+
+or using `download_models.py` script in the `scripts` directory.
+
+```
+chmod u+x scripts/gdown.sh
+python scripts/download_models.py -d all -o models
+```

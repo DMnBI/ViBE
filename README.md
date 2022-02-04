@@ -77,9 +77,19 @@ The source files and useful scripts are in this repository. The pre-trained and 
 ```
 git clone https://github.com/DMnBI/ViBE.git
 cd ViBE
+chmod +x src/vibe
 ```
 
-Please download the model you need through the link below and save them in the `models` directory.
+The `vibe` script in the `src` directory is an executable python script. No additional installation is required.
+
+**Download Models**
+
+Please download the model you need through the link below and save them in the `models` directory. You can also download models using the `download_models.py` script in the `scripts` directory. 
+
+```
+chmod u+x scripts/gdown.sh
+python scripts/download_models.py -d all -o ./models
+```
 
 **Pre-trained model**
 
@@ -125,7 +135,7 @@ export DEV_FILE=$DATA_DIR/dev.csv
 export OUTPUT_DIR=$WORK_DIR/models/my_pre-trained
 export CONFIG_FILE=$WORK_DIR/src/configs/ViBE-config-4
 
-vibe pre-train \
+src/vibe pre-train \
     --gpus 0,1 \
     --train_file $TRAIN_FILE \
     --validation_file $DEV_FILE \
@@ -161,7 +171,7 @@ export TRAIN_FILE=$DATA_DIR/BPDR.250bp.train.paired.csv
 export DEV_FILE=$DATA_DIR/BPDR.250bp.dev.paired.csv
 export OUTPUT_DIR=$WORK_DIR/models/my_BPDR.250bp
 
-vibe fine-tune \
+src/vibe fine-tune \
     --gpus 0,1 \
     --pre-trained_model $PRETRAINED_MODEL \
     --train_file $TRAIN_FILE \
@@ -190,7 +200,7 @@ export SAMPLE_FILE=$DATA_DIR/SRR14403295.paired.csv
 export OUTPUT_DIR=$WORK_DIR/preds
 export OUTPUT_PREFIX=SRR14403295
 
-vibe predict \
+src/vibe predict \
     --gpus 0 \
     --model $FINETUNED_MODEL \
     --sample_file $SAMPLE_FILE \
@@ -273,6 +283,26 @@ split_data.py \
     -c 0.9 \
     -t Herpesvirales Zurhausenvirales
 ```
+
+### 3.3 download_models.py
+
+Pre-trained models were uploaded on Google Drive. You can download those models through not only the above links but given python script. 
+
+**USAGE**
+
+```
+download_models.py \
+    -d all \
+    -o models
+```
+Using the above command, all pre-trained models will be downloaded in the `models` directory. You can give relative path of the target directory through `-o` option. Moreover, You can download specific model(s) instead of downloading all models.
+
+```
+download_models.py \
+    -d BPDR250 DNA250 RNA250 \
+    -o models
+```
+
 
 ## 4. Run example data
 
