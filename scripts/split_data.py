@@ -55,6 +55,7 @@ def main(argv = sys.argv[1:]):
 	labels = set(records['prediction'])
 	for label in labels:
 		sub = records.loc[records['prediction'] == label]
+		sub = sub.drop(['prediction', 'score'], axis = 1)
 		sub.to_csv(f"{args.o_dir}/{label}.csv", sep = ",", index = False)
 
 	return 0
