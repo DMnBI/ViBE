@@ -137,6 +137,12 @@ def parse_args(argv = sys.argv[1:]):
 			type=float,
 			default=0.15,
 			help="masking probability for MLM; default 0.15")
+		training_group.add_argument('--masking_alpha',
+			dest='masking_alpha',
+			metavar="FLOAT",
+			type=float,
+			default=1.0,
+			help='A multiplicator for masking k consecutive tokens; default 1.0')
 		training_args(training_group)
 
 		req_group = pretrain.add_argument_group('required arguments')
@@ -321,6 +327,7 @@ def run_vibe(args, prog):
 		'--config_name', args.config,
 		'--tokenizer_name', args.config,
 		'--mlm_probability', str(args.mlm_prob),
+		'--masking_alpha', str(args.masking_alpha),
 		'--line_by_line', 
 		]
 
