@@ -148,6 +148,9 @@ class DataTrainingArguments:
     mlm_probability: float = field(
         default=0.15, metadata={"help": "Ratio of tokens to mask for masked language modeling loss"}
     )
+    masking_alpha: float = field(
+        default=1.0, metadata={"help": "A multiplicator for masking consecutive tokens."}
+    )
     line_by_line: bool = field(
         default=False,
         metadata={"help": "Whether distinct lines of text in the dataset are to be handled as distinct sequences."},
@@ -461,6 +464,7 @@ def run_pretrain(args = None):
         tokenizer=tokenizer,
         mlm_probability=data_args.mlm_probability,
         pad_to_multiple_of=8 if pad_to_multiple_of_8 else None,
+        alpha=data_args.masking_alpha,
     )
 
     # Initialize our Trainer

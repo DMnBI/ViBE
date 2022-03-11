@@ -145,7 +145,7 @@ src/vibe pre-train \
     --cache_dir $CACHE_DIR \
     --max_seq_length 512 \
     --num_workers 20 \
-    --mlm_probability 0.0375 \
+    --mlm_probability 0.15 \
     --gradient_accumulation_steps 40 \
     --per_device_batch_size 32 \
     --max_steps 100000 \

@@ -38,6 +38,7 @@ class DataCollatorForKmerModeling:
     mlm: bool = True
     mlm_probability: float = 0.15
     pad_to_multiple_of: Optional[int] = None
+    alpha: float = 1.0
 
     def __post_init__(self):
         if self.mlm and self.tokenizer.mask_token is None:
@@ -80,16 +81,22 @@ class DataCollatorForKmerModeling:
         Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.
         """
 
-        MASK_LIST = {
-            3: [-1, 1],
-            4: [-1, 1, 2],
-            5: [-2, -1, 1, 2],
-            6: [-2, -1, 1, 2, 3]
-        }
+        def get_mask_list(k):
+            MASK_LIST = list()
+            for i in range(1, k):
+                pos = i // 2
+                pos = -pos if i % 2 == 0 else (pos + 1)
+                MASK_LIST.append(pos)
+            MASK_LIST.sort()
+
+            return MASK_LIST
+        
+        masking_range = int(self.tokenizer.k * self.alpha)
+        adjusted_mlm_probability = self.mlm_probability / masking_range
 
         labels = inputs.clone()
         # We sample a few tokens in each sequence for MLM training (with probability `self.mlm_probability`)
-        probability_matrix = torch.full(labels.shape, self.mlm_probability)
+        probability_matrix = torch.full(labels.shape, adjusted_mlm_probability)
         if special_tokens_mask is None:
             special_tokens_mask = [
                 self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in labels.tolist()
@@ -102,13 +109,14 @@ class DataCollatorForKmerModeling:
         masked_indices = torch.bernoulli(probability_matrix).bool()
 
         # extend masked indices
+        MASK_LIST = get_mask_list(masking_range)
         masks = deepcopy(masked_indices)
         for i, masked_index in enumerate(masks):
             end = torch.where(probability_matrix[i] != 0)[0].tolist()[-1]
             mask_centers = set(torch.where(masked_index == 1)[0].tolist())
             new_centers = deepcopy(mask_centers)
             for center in mask_centers:
-                for mask_number in MASK_LIST[self.tokenizer.k]:
+                for mask_number in MASK_LIST:
                     current_index = center + mask_number
                     if current_index <= end and current_index >= 1:
                         new_centers.add(current_index)
