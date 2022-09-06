@@ -3,8 +3,10 @@
 This repository includes the implementation of 'ViBE: a hierarchical BERT model to identify viruses using metagenome sequencing data'. Please cite our paper if you use our models. Fill free to report any issue for maintenance of our model.
 
 ## Citation
-under review  
-doi:
+If you have used ViBE in your research, please cite the following publication:
+
+Ho-Jin Gwak, Mina Rho, ViBE: a hierarchical BERT model to identify eukaryotic viruses using metagenome sequencing data, Briefings in Bioinformatics, Volume 23, Issue 4, July 2022, bbac204
+doi: https://doi.org/10.1093/bib/bbac204
 
 ## Overview
 
